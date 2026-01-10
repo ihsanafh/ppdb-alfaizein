@@ -1,0 +1,8 @@
+node_modules/
+.env
+cloudflared.exe
+.DS_Store
+
+# Ignore uploads folder but keep the folder structure
+server/uploads/*
+!server/uploads/.gitkeep

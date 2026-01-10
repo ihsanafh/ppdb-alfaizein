@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # 1. Layanan Database (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    container_name: ppdb_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: user_ppdb
+      POSTGRES_PASSWORD: password_rahasia
+      POSTGRES_DB: ppdb_alfaizein
+    ports:
+      # Format: "PORT_KOMPUTER_ANDA : PORT_ASLI_CONTAINER"
+      - "5433:5432"  # <--- KITA UBAH INI (Host pakai 5433, Container tetap 5432)
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. Layanan Backend (Node.js Express)
+  server:
+    build: ./server
+    container_name: ppdb_backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      DB_USER: user_ppdb
+      DB_PASSWORD: password_rahasia
+      DB_NAME: ppdb_alfaizein
+      # PENTING: Backend tetap tembak port 5432 karena komunikasi terjadi DI DALAM jaringan Docker
+      DB_PORT: 5432 
+      DB_HOST: db
+    depends_on:
+      - db
+    # === TAMBAHKAN BAGIAN INI ===
+    volumes:
+      # Format: "Lokasi_di_Laptop : Lokasi_di_Dalam_Docker"
+      # /app/uploads adalah lokasi di docker karena WORKDIR kita /app
+      - ./server/uploads:/app/uploads
+      - ./server:/app
+      - /app/node_modules # Agar node_modules container tidak tertimpa node_modules laptop
+      - ./server/auth_info_baileys:/app/auth_info_baileys
+    # ============================
+
+  # 3. Layanan Frontend (React Vite)
+  client:
+    build: ./client
+    container_name: ppdb_frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - server
+
+volumes:
+  postgres_data:

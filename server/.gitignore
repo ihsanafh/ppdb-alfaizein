@@ -1,0 +1,30 @@
+# Dependencies
+node_modules
+
+# Environment Variables (Sangat krusial untuk password DB)
+.env
+.env.test
+.env.production
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Editor directories
+.vscode/
+.idea/
+.DS_Store
+
+# --- UPLOADS & FILE SENSITIF ---
+# Abaikan semua file di dalam folder uploads
+uploads/*
+
+# TAPI, jangan abaikan file .gitkeep (agar foldernya tetap ter-track)
+!uploads/**/.gitkeep

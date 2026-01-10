@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === CSS KHUSUS PRINT === */
+@media print {
+  /* Sembunyikan elemen dengan class 'no-print' */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset margin dan padding agar kertas penuh */
+  body, #root, .flex {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    background-color: white !important;
+  }
+
+  /* Pastikan konten utama melebar 100% */
+  main {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hapus scrollbar saat print */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+}
