@@ -151,7 +151,7 @@ exports.getPendaftarByNik = async (req, res) => {
   }
 };
 
-// === 4. [BARU] EDIT DATA SISWA (ADMIN) ===
+// === 4. EDIT DATA SISWA (ADMIN) ===
 exports.updateDataSiswa = async (req, res) => {
   try {
     const { nik } = req.params;
@@ -160,14 +160,14 @@ exports.updateDataSiswa = async (req, res) => {
     console.log('--- START UPDATE DATA SISWA ---');
     console.log('Target NIK:', nik);
     console.log('Body Data:', req.body);
-    console.log('User Admin:', req.user); // Cek apakah admin terdeteksi
+    console.log('User Admin:', req.user);
 
     const { 
       nama_lengkap, tempat_lahir, tanggal_lahir, jenis_kelamin, alamat, asal_sekolah,
       nama_ayah, pekerjaan_ayah, nama_ibu, pekerjaan_ibu, no_hp_ortu 
     } = req.body;
 
-    // Validasi Admin ID (Sering error disini jika req.user undefined)
+    // Validasi Admin ID
     const adminId = req.user ? req.user.id : null;
     if (!adminId) {
         console.error('ERROR: Admin ID (req.user) tidak ditemukan/undefined');
@@ -210,17 +210,17 @@ exports.updateDataSiswa = async (req, res) => {
     // [DEBUG LOG ERROR]
     console.error('=== ERROR UPDATE DATA SISWA ===');
     console.error('Error Message:', err.message);
-    console.error('SQL Error Code:', err.code); // Berguna untuk cek violation
+    console.error('SQL Error Code:', err.code);
     console.error('Full Stack:', err);
     
     res.status(500).json({ 
         success: false, 
-        message: 'Gagal update data: ' + err.message // Kirim pesan error spesifik ke frontend
+        message: 'Gagal update data: ' + err.message
     });
   }
 };
 
-// === 5. UPDATE STATUS SISWA (Lulus/Tidak) + WA + LOG NOTIFIKASI ===
+// === 5. UPDATE STATUS SISWA (Lulus/Tidak) + NOTIFIKASI ADAPTIF ===
 exports.updateStatusSiswa = async (req, res) => {
   try {
     const { nik } = req.params;
@@ -245,18 +245,19 @@ exports.updateStatusSiswa = async (req, res) => {
       VALUES ($1, $2, 'Update oleh Admin', $3)
     `, [nik, status_baru, req.user.id]);
 
-    // === KIRIM WA & LOG NOTIFIKASI ===
+    // === KIRIM NOTIFIKASI ADAPTIF (WA -> SMS) ===
     const pesan = `Halo, status pendaftaran ananda *${siswa.nama_lengkap}* telah diperbarui menjadi:\n\n` +
                   `*${status_baru.toUpperCase()}*\n\n` +
                   `Silakan cek detailnya di website "Cek Status".`;
     
-    kirimPesan(siswa.no_hp_ortu, pesan);
+    // 1. Kirim & Tangkap Metode Berhasil
+    const metodeKirim = await kirimPesan(siswa.no_hp_ortu, pesan);
     
-    // Simpan ke riwayat notifikasi
+    // 2. Simpan ke riwayat notifikasi sesuai metode
     await pool.query(`
       INSERT INTO riwayat_notifikasi (nik_siswa, jenis_pesan, status_pengiriman, isi_pesan)
-      VALUES ($1, 'WhatsApp', 'Terkirim', $2)
-    `, [nik, pesan]);
+      VALUES ($1, $2, 'Terkirim', $3)
+    `, [nik, metodeKirim, pesan]);
 
     res.json({ success: true, message: 'Status berhasil diperbarui' });
 
@@ -266,7 +267,7 @@ exports.updateStatusSiswa = async (req, res) => {
   }
 };
 
-// === 6. BAYAR TUNAI + WA + LOG NOTIFIKASI ===
+// === 6. BAYAR TUNAI + NOTIFIKASI ADAPTIF ===
 exports.bayarTunai = async (req, res) => {
   const client = await pool.connect();
   
@@ -305,17 +306,18 @@ exports.bayarTunai = async (req, res) => {
 
     await client.query('COMMIT');
 
-    // === KIRIM WA & LOG NOTIFIKASI ===
+    // === KIRIM NOTIFIKASI ADAPTIF (WA -> SMS) ===
     const pesan = `Pembayaran TUNAI untuk pendaftaran *${siswa.nama_lengkap}* telah kami terima di sekolah.\n\n` +
                   `Status saat ini: *LUNAS*.`;
     
-    kirimPesan(siswa.no_hp_ortu, pesan);
+    // 1. Kirim & Tangkap Metode Berhasil
+    const metodeKirim = await kirimPesan(siswa.no_hp_ortu, pesan);
     
-    // Simpan ke riwayat notifikasi (gunakan pool, bukan client)
+    // 2. Simpan ke riwayat notifikasi (gunakan pool, bukan client)
     await pool.query(`
       INSERT INTO riwayat_notifikasi (nik_siswa, jenis_pesan, status_pengiriman, isi_pesan)
-      VALUES ($1, 'WhatsApp', 'Terkirim', $2)
-    `, [nik, pesan]);
+      VALUES ($1, $2, 'Terkirim', $3)
+    `, [nik, metodeKirim, pesan]);
 
     res.json({ success: true, message: 'Pembayaran tunai berhasil dicatat.' });
 
@@ -346,7 +348,7 @@ exports.getPendingPayments = async (req, res) => {
   }
 };
 
-// === 8. PROSES VERIFIKASI PEMBAYARAN (Transfer) + WA + LOG NOTIFIKASI ===
+// === 8. PROSES VERIFIKASI PEMBAYARAN (Transfer) + NOTIFIKASI ADAPTIF ===
 exports.verifyPayment = async (req, res) => {
   const client = await pool.connect();
   
@@ -384,7 +386,7 @@ exports.verifyPayment = async (req, res) => {
         [nik_siswa]
       );
       
-      // Pesan WA
+      // Pesan notifikasi
       pesan = `Pembayaran pendaftaran atas nama *${siswa.nama_lengkap}* telah *DITERIMA/LUNAS*.\n\nTerima kasih!`;
 
     } else if (aksi === 'tolak') {
@@ -406,21 +408,22 @@ exports.verifyPayment = async (req, res) => {
         [nik_siswa]
       );
 
-      // Pesan WA
+      // Pesan notifikasi
       pesan = `Mohon maaf, bukti pembayaran untuk *${siswa.nama_lengkap}* *DITOLAK*.\n\n` +
               `Silakan unggah bukti yang valid melalui menu Cek Status.`;
     }
 
     await client.query('COMMIT');
 
-    // === KIRIM WA & LOG NOTIFIKASI ===
-    kirimPesan(siswa.no_hp_ortu, pesan);
+    // === KIRIM NOTIFIKASI ADAPTIF (WA -> SMS) ===
+    // 1. Kirim & Tangkap Metode Berhasil
+    const metodeKirim = await kirimPesan(siswa.no_hp_ortu, pesan);
     
-    // Simpan ke riwayat notifikasi (gunakan pool, bukan client)
+    // 2. Simpan ke riwayat notifikasi (gunakan pool, bukan client)
     await pool.query(`
       INSERT INTO riwayat_notifikasi (nik_siswa, jenis_pesan, status_pengiriman, isi_pesan)
-      VALUES ($1, 'WhatsApp', 'Terkirim', $2)
-    `, [nik_siswa, pesan]);
+      VALUES ($1, $2, 'Terkirim', $3)
+    `, [nik_siswa, metodeKirim, pesan]);
 
     res.json({ success: true, message: `Pembayaran berhasil di-${aksi}` });
 
@@ -433,7 +436,7 @@ exports.verifyPayment = async (req, res) => {
   }
 };
 
-// === 9. VERIFIKASI DOKUMEN + WA + LOG NOTIFIKASI ===
+// === 9. VERIFIKASI DOKUMEN + NOTIFIKASI ADAPTIF ===
 exports.verifyDokumen = async (req, res) => {
   try {
     const { id_dokumen } = req.params;
@@ -445,7 +448,7 @@ exports.verifyDokumen = async (req, res) => {
       [status, catatan || null, id_dokumen]
     );
 
-    // === JIKA DITOLAK, KIRIM WA & LOG NOTIFIKASI ===
+    // === JIKA DITOLAK, KIRIM NOTIFIKASI ADAPTIF ===
     if (status === 'Ditolak') {
       const resDoc = await pool.query(`
         SELECT d.jenis_dokumen, d.nik_siswa, s.nama_lengkap, s.no_hp_ortu 
@@ -460,13 +463,14 @@ exports.verifyDokumen = async (req, res) => {
                     `Alasan: "${catatan}"\n\n` +
                     `Mohon segera perbaiki melalui menu Cek Status.`;
       
-      kirimPesan(data.no_hp_ortu, pesan);
+      // 1. Kirim & Tangkap Metode Berhasil
+      const metodeKirim = await kirimPesan(data.no_hp_ortu, pesan);
       
-      // Simpan ke riwayat notifikasi
+      // 2. Simpan ke riwayat notifikasi
       await pool.query(`
         INSERT INTO riwayat_notifikasi (nik_siswa, jenis_pesan, status_pengiriman, isi_pesan)
-        VALUES ($1, 'WhatsApp', 'Terkirim', $2)
-      `, [data.nik_siswa, pesan]);
+        VALUES ($1, $2, 'Terkirim', $3)
+      `, [data.nik_siswa, metodeKirim, pesan]);
     }
 
     res.json({ success: true, message: `Dokumen berhasil diubah menjadi ${status}` });
@@ -477,7 +481,7 @@ exports.verifyDokumen = async (req, res) => {
   }
 };
 
-// === [BARU] AMBIL RIWAYAT NOTIFIKASI ===
+// === 10. AMBIL RIWAYAT NOTIFIKASI ===
 exports.getRiwayatNotifikasi = async (req, res) => {
   try {
     // Join dengan calon_siswa agar kita tahu nama penerimanya siapa

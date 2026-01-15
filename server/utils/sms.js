@@ -6,7 +6,7 @@ const axios = require('axios');
 const SMS_API_URL = 'https://api.sms-gate.app/3rdparty/v1/messages';
 
 // === KREDENSIAL DARI APLIKASI DI HP ===
-const API_USERNAME = 'E4K4LG';        // Sesuaikan dengan 'username' di HP
+const API_USERNAME = 'K4SV7D';        // Sesuaikan dengan 'username' di HP
 const API_PASSWORD = 'qwerty12345678'; // Sesuaikan dengan 'password' di HP
 
 const kirimSMS = async (nomorTujuan, pesan) => {
