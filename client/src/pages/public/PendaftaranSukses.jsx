@@ -45,7 +45,7 @@ export default function PendaftaranSukses() {
                   <p className="text-sm text-gray-600 dark:text-text-dark-secondary">
                     Silakan datang langsung ke sekolah untuk pembayaran tunai di alamat:
                   </p>
-                  <p className="mt-2 text-sm text-text-light dark:text-text-dark-primary font-medium">Jl. Contoh No. 1</p>
+                  <p className="mt-2 text-sm text-text-light dark:text-text-dark-primary font-medium">MI Al_Faizein, Jl. M Yusuf, Belakangan Pasar Baru, Kec. Pangkalan Kerinci, Kab. Pelalawan, Riau</p>
                 </div>
 
               </div>

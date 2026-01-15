@@ -1,54 +1,52 @@
-// server/utils/sms.js
 const axios = require('axios');
 
-// === KONFIGURASI GATEWAY ===
-// Pastikan IP ini sesuai dengan yang ada di HP Anda
-const SMS_API_URL = 'http://192.168.1.91:8080'; 
-const SMS_USER = 'admin';    
-const SMS_PASS = '12345678'; 
+// === KONFIGURASI SERVER CLOUD ===
+// Dokumentasi: https://github.com/capcom6/android-sms-gateway/blob/master/docs/api.md
+// Perhatikan: Endpoint harus jamak '/messages'
+const SMS_API_URL = 'https://api.sms-gate.app/3rdparty/v1/messages';
+
+// === KREDENSIAL DARI APLIKASI DI HP ===
+const API_USERNAME = 'E4K4LG';        // Sesuaikan dengan 'username' di HP
+const API_PASSWORD = 'qwerty12345678'; // Sesuaikan dengan 'password' di HP
 
 const kirimSMS = async (nomorTujuan, pesan) => {
   try {
-    // 1. FORMAT NOMOR LEBIH PINTAR
-    // Hapus semua karakter selain angka
+    // 1. FORMAT NOMOR (Pastikan +62)
     let cleanNum = nomorTujuan.toString().replace(/\D/g, ''); 
+    if (cleanNum.startsWith('0')) cleanNum = '+62' + cleanNum.slice(1);
+    else if (cleanNum.startsWith('8')) cleanNum = '+62' + cleanNum;
+    else if (cleanNum.startsWith('62')) cleanNum = '+' + cleanNum;
 
-    // Logika standarisasi ke format +62
-    if (cleanNum.startsWith('0')) {
-      // Ubah 08xxx jadi +628xxx
-      cleanNum = '+62' + cleanNum.slice(1);
-    } else if (cleanNum.startsWith('8')) {
-      // Ubah 8xxx jadi +628xxx (Kasus Anda saat ini)
-      cleanNum = '+62' + cleanNum;
-    } else if (cleanNum.startsWith('62')) {
-      // Ubah 628xxx jadi +628xxx
-      cleanNum = '+' + cleanNum;
-    }
-    
-    // Jika tidak masuk kondisi di atas, biarkan apa adanya (mungkin sudah +62)
-    
-    console.log(`[SMS] Mengirim ke: ${cleanNum} (Format Asli: ${nomorTujuan})`);
+    console.log(`[SMS Cloud] Mengirim ke: ${cleanNum}`);
 
-    // 2. Buat Header Auth
-    const auth = Buffer.from(`${SMS_USER}:${SMS_PASS}`).toString('base64');
-
-    // 3. Kirim Request ke HP
-    const response = await axios.post(`${SMS_API_URL}/message`, {
-      phoneNumbers: [cleanNum],
-      message: pesan
+    // 2. KIRIM REQUEST (Menggunakan Basic Auth)
+    const response = await axios.post(SMS_API_URL, {
+      message: pesan,
+      phoneNumbers: [cleanNum], // Wajib array
     }, {
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/json'
+      // Axios otomatis meng-handle Basic Auth (base64 encode username:password)
+      auth: {
+        username: API_USERNAME,
+        password: API_PASSWORD
       },
-      timeout: 10000 
+      timeout: 15000 
     });
 
-    console.log(`✅ SMS Gateway Menerima Request! ID: ${response.data.id}`);
+    console.log(`✅ SMS Berhasil dikirim ke Cloud! ID: ${response.data.id}`);
     return true;
 
   } catch (error) {
-    console.error('❌ Gagal Request SMS ke HP:', error.message);
+    // Analisis Error yang lebih detail
+    if (error.response) {
+      console.error('❌ Gagal Kirim SMS (Server Response):', {
+        status: error.response.status,
+        data: error.response.data
+      });
+    } else if (error.request) {
+      console.error('❌ Gagal Kirim SMS (Koneksi): Tidak ada respon dari server api.sms-gate.app');
+    } else {
+      console.error('❌ Gagal Kirim SMS (Internal):', error.message);
+    }
     return false;
   }
 };

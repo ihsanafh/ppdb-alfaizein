@@ -55,5 +55,6 @@ services:
     depends_on:
       - server
 
+
 volumes:
   postgres_data:
