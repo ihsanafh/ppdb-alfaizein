@@ -103,8 +103,8 @@ CREATE TABLE log_status_pendaftaran (
 
 -- DATA DUMMY (Untuk Tes Login Admin)
 -- Password: 'admin' (Hash bcrypt contoh, nanti diganti di backend)
-INSERT INTO pengguna_sistem (nama_lengkap, pegid, password_hash) 
-VALUES ('Panitia PPDB', 'admin123', '$2b$10$X7V.j5...HashPasswordNanti...');
+INSERT INTO pengguna_sistem (nama_lengkap, pegid, password_hash, role) 
+VALUES ('Admin Panitia', '10405869194003', '$2b$10$PSDmq9t/fL9m3HVwIRQ0muD6hpuPUwnYqsmCCWz4XDzvxXSjxSvta', 'admin');
 
 
 SELECT * FROM calon_siswa;
